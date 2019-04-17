@@ -1,0 +1,384 @@
+# Brett Waugh
+# 12 April 2019
+# capstone.R
+# Different analytic techniques to predict the
+# number of Starbuck's in an area. 
+# Data was retrieved from: https://www.kaggle.com/starbucks/store-locations
+
+
+#########################################################################################################
+########################################### Data & Libraries ############################################
+#########################################################################################################
+# Necessary libraries.
+require(readr)
+require(ggplot2)
+require(dplyr)
+require(stats)
+require(plyr)
+require(cluster)
+require(lattice)
+require(graphics)
+require(grid)
+require(gridExtra)
+require(mgcv)
+require(caret)
+require(e1071)
+require(boot)
+require(ISLR)
+require(arm)
+
+# Load in the data. Data was provided by: https://www.kaggle.com/starbucks/store-locations
+directory <- read_csv("Documents/IDS4934/capstone/directory.csv")
+
+# States and counts calculated in Splunk. 
+starbucksByState <- read_csv("Documents/IDS4934/capstone/starbucksByState.csv")
+
+# Make into a dataframe.
+df <- as.data.frame(directory)
+
+#########################################################################################################
+############################################# Data filtering ############################################
+#########################################################################################################
+
+# Only keep stores that are Starbucks. Teavana stores were originally included. 
+df1 <- subset(df, Brand=="Starbucks")
+
+# Verify that only Starbucks stores remain. 
+nrow(directory[directory$Brand!="Starbucks",])
+
+# Drop rows that do not matter to the analysis. 
+df2 <- subset(df1, select = -c(`Store Number`,`Store Number`, `Store Name`, `Ownership Type`, `Street Address`, `Phone Number`, `Timezone`))
+
+# Verify that those fields were dropped.
+str(df2)
+
+# Only keep stores that are in the United States. Dataset provided worldwide locations. 
+df3 <- subset(df2, Country=="US")
+
+# Verify that only US locations were kept. 
+nrow(df3[df3$Country!="US",])
+
+#########################################################################################################
+############################################# First Method  #############################################
+#########################################################################################################
+# Is the mean number of Starbucks in the US a good measure for the number of Starbucks across the US?
+
+# Average number of Starbucks across the US.
+meanStarbucks <- nrow(df3)/nrow(starbucksByState)
+
+# Histogram of "Number of Starbucks by State". G1.
+ggplot(df3, aes(x=df3$`State/Province`, col=df3$`State/Province`, fill=df3$`State/Province`)) + 
+  geom_histogram(stat="count") +  
+  theme(axis.text.x = element_text(angle = -90), legend.position = "none") + 
+  labs(x = "State", y = "Number of Starbucks", title = "Number of Starbucks by State", caption = "based on data from: https://www.kaggle.com/starbucks/store-locations")
+
+# Histogram of "Number of Starbucks by State" with mean line. G2. 
+ggplot(df3, aes(x=df3$`State/Province`, col=df3$`State/Province`, fill=df3$`State/Province`)) + 
+  geom_histogram(stat="count") +  
+  theme(axis.text.x = element_text(angle = -90), legend.position = "none") + 
+  labs(x = "State", y = "Number of Starbucks", title = "Number of Starbucks by State", caption = "based on data from: https://www.kaggle.com/starbucks/store-locations") +
+  geom_hline(yintercept=meanStarbucks)
+
+# Accuracy for first method. 
+# No states match this mean! Closest results are: MA has 262, MD has 252, MI has 272, NV has 249, and NJ has 249. 
+method1Result <- nrow(starbucksByState[starbucksByState$count==meanStarbucks,])/nrow(starbucksByState)
+method1Result
+
+#########################################################################################################
+############################################# Second Method  ############################################
+#########################################################################################################
+# Does removing outliers and looking inside one standard devaiation improve our chances at predicting 
+# the number of Starbucks in an area?
+
+# Bowplot to determine outliers. G4.
+ggplot(starbucksByState, aes(y=starbucksByState$count)) + 
+  geom_boxplot(outlier.colour = "red", show.legend = NA, outlier.shape = 8, outlier.size = 5) +  
+  theme(legend.position = "none") + 
+  labs(y = "Number of Starbucks", title = "Distribution of Starbucks in United States", caption = "based on data from: https://www.kaggle.com/starbucks/store-locations")
+
+# Standard deviation.
+allSD <- sd(starbucksByState$count)
+allSD
+
+# Data without outliers: CA, TX, WA is 173.17. 
+sb1 <- subset(starbucksByState, State_Province!="CA" & State_Province!="TX" & State_Province!="WA")
+sb1
+
+# Mean of data without outliers. 
+meanSB1 <- mean(sb1$count)
+meanSB1
+
+# Standard deviation of data without outliers. 
+sdSB1 <- sd(sb1$count)
+sdSB1
+
+# Upper and lower limits.
+upSB1 <- meanSB1 + sdSB1
+upSB1
+
+loSB1 <- meanSB1 - sdSB1
+loSB1
+
+# Histogram of "Number of Starbucks by State" within one standard deviation (93.05,439.39). G5.
+ggplot(sb1, aes(x=sb1$State_Province, y=sb1$count, col=sb1$State_Province, fill=sb1$State_Province)) + 
+  geom_col() +  
+  theme(axis.text.x = element_text(angle = -90), legend.position = "none") + 
+  labs(x = "State", y = "Number of Starbucks", title = "Number of Starbucks by State", caption = "based on data from: https://www.kaggle.com/starbucks/store-locations") +
+  geom_hline(yintercept = upSB1) +
+  geom_hline(yintercept = loSB1)
+
+# Boxplot for "Distribution of Starbucks in United States without CA, TX, and WA". G6.
+ggplot(sb1, aes(y=sb1$count)) + 
+  geom_boxplot(outlier.colour = "red", show.legend = NA, outlier.shape = 8, outlier.size = 5) +  
+  theme(legend.position = "none") + 
+  labs(y = "Number of Starbucks", title = "Distribution of Starbucks in United States without CA, TX, WA", caption = "based on data from: https://www.kaggle.com/starbucks/store-locations")
+
+
+# Accuracy for second method. 
+method2Result <- nrow(sb1[sb1$count<=upSB1 & sb1$count>=loSB1,])/nrow(starbucksByState)
+method2Result
+
+#########################################################################################################
+############################################# Third Method  #############################################
+#########################################################################################################
+# Does removing even more upper bounds and looking inside one standard devaiation improve our chances at 
+#predicting the number of Starbucks in an area?
+
+# Data without CA, TX, WA, FL, and NY. 
+sb2 <- subset(starbucksByState, State_Province!="CA" & State_Province!="TX" & State_Province!="WA" & State_Province!="FL" & State_Province!="NY")
+sb2
+
+# Mean of data without outliers. 
+meanSB2 <- mean(sb2$count)
+meanSB2
+
+# Standard deviation of data without outliers. 
+sdSB2 <- sd(sb2$count)
+sdSB2
+
+# Upper and lower limits.
+upSB2 <- meanSB2 + sdSB2
+upSB2
+
+loSB2 <- meanSB2 - sdSB2
+loSB2
+
+# Histogram of "Number of Starbucks by State" within one standard deviation (93.05,439.39). G7.
+ggplot(sb2, aes(x=sb2$State_Province, y=sb2$count, col=sb2$State_Province, fill=sb2$State_Province)) + 
+  geom_col() +  
+  theme(axis.text.x = element_text(angle = -90), legend.position = "none") + 
+  labs(x = "State", y = "Number of Starbucks", title = "Number of Starbucks by State", caption = "based on data from: https://www.kaggle.com/starbucks/store-locations") +
+  geom_hline(yintercept = upSB2) +
+  geom_hline(yintercept = loSB2)
+
+# Boxplot for "Distribution of Starbucks in United States without CA, TX, WA, FL, and NY". G8.
+ggplot(sb2, aes(y=sb2$count)) + 
+  geom_boxplot(outlier.colour = "red", show.legend = NA, outlier.shape = 8, outlier.size = 5) +  
+  theme(legend.position = "none") + 
+  labs(y = "Number of Starbucks", title = "Distribution of Starbucks in United States without CA, TX, WA, FL, and NY", caption = "based on data from: https://www.kaggle.com/starbucks/store-locations")
+
+# Results for third method. 
+method3Result <- nrow(sb2[sb2$count<=upSB2 & sb2$count>=loSB2,])/nrow(starbucksByState)
+method3Result
+
+# #########################################################################################################
+# ############################################# XXXXXX Method  ############################################
+# #########################################################################################################
+# # Unsupervised learning.
+# # Can I use K-Means on the longitude and latitude to predict the stores in an area?
+# 
+# # Dotplot of "Starbucks locations in the United States"
+# ggplot(df3, aes(x=Longitude, y=Latitude, col=`State/Province`)) + 
+#   geom_point() +
+#   labs(x="Longitude", y = "Latitude", title = "Starbucks locations in the United States", caption = "based on data from: https://www.kaggle.com/starbucks/store-locations") +
+#   theme(legend.position = "none")
+# 
+# # Turn relevant fields into a matrix.
+# kmdata <- as.matrix(df3[, c("Longitude", "Latitude")])
+# 
+# # Find the number needed for K.
+# wss <- numeric(10)
+# for (k in 1:15) wss[k] <- sum(kmeans(kmdata, centers = k, nstart=25)$withinss)
+# 
+# # Graph to determine the proper K value.
+# plot(1:15, wss, type="b",xlab = "Number of Clusters", ylab="Within Sum of Squares")
+# 
+# # Perform kmeans with the K value from above. 
+# km =kmeans(kmdata, 3, nstart=25)
+# km
+# 
+# # Transform data back into dataframe. 
+# kDF = as.data.frame(kmdata)
+# kDF$cluster = factor(km$cluster)
+# centers = as.data.frame(km$centers)
+# 
+# # Graph of Kmeans clusters. 
+# ggplot(kDF, aes(x=kDF$Longitude, y=kDF$Latitude, color=cluster)) +
+#   geom_point() + 
+#   labs(x="Longitude", y = "Latitude", title = "KMeans Clusters of Starbucks Locations", caption = "based on data from: https://www.kaggle.com/starbucks/store-locations")
+# 
+# # Number of Starbucks locations by cluster. 
+# c1 <- nrow(kDF[kDF$cluster==1,])
+# c2 <- nrow(kDF[kDF$cluster==2,])
+# c3 <- nrow(kDF[kDF$cluster==3,])
+# 
+# # Piechart of "Kmeans Clusters of US Starbucks locations"
+# slices <- c(c1, c2, c3)
+# lbls <- c("Cluster 1", "Cluster 2","Cluster 3")
+# pie(slices, labels = lbls, main="Kmeans Clusters of US Starbucks locations", col=c("red","green","blue"))
+
+#########################################################################################################
+############################################# Fourth Method  ############################################
+#########################################################################################################
+# Linear Regression
+# Can I use linear regression on lat/long to predict Starbucks locations?
+
+# Map showing "Linear Regression on Starbucks locations". G9.
+ggplot(df3, aes(x=Longitude, y=Latitude)) + 
+  geom_smooth(method="lm") + 
+  geom_point() +  
+  labs(x="Longitude", y = "Latitude", title = "Linear Regression on Starbucks locations", caption = "based on data from: https://www.kaggle.com/starbucks/store-locations")
+
+# Correlation between latitude and longitude.
+cor(df3$Longitude, df3$Latitude)
+
+# Creating the linear model. 
+linearMod <- lm(df3$Longitude ~ df3$Latitude, data=df3)
+summary(linearMod)
+
+#########################################################################################################
+############################################# More data  ################################################
+#########################################################################################################
+# By using more data than what is provided, we may be able to more advanced techniques with better
+# results. 
+
+# Used Splunk to combine files into a single file. Sources for the file are from several different
+# locations. 
+addData <- read_csv("Documents/IDS4934/capstone/addData.csv")
+
+#########################################################################################################
+############################################# Fifth Method  #############################################
+#########################################################################################################
+# Multivariate Linear Regression
+# Can I use multivariate linear regression on the additional data to predict Starbucks locations?
+
+# First run to see which features are relevant. 
+linFit <- lm(addData$starbucks ~ addData$income + addData$numUni + addData$population + addData$crime, data=addData)
+summary(linFit)
+
+# Create a training and testing set. 
+size <- round(.8 * dim(addData)[1])
+training_set <- addData[1:size,]
+testing_set <- addData[-(1:size),]
+
+# Training set with relevant features. 
+linFit2 <- lm(training_set$starbucks ~ training_set$income + training_set$numUni + training_set$population, data=training_set)
+summary(linFit2)
+
+# Testing set. ***** FINISH THIS SECTION *******
+linFit2Test <- predict(linFit2, testing_set)
+summary(linFit2Test)
+
+#########################################################################################################
+############################################# Sixth Method  #############################################
+#########################################################################################################
+# Logistic Regression
+
+# First logistic model including all fields in additional data. 
+logmod1 <- glm(addData$starbucks ~ addData$income + addData$numUni + addData$population + addData$crime, data=addData)
+summary(logmod1) # display results
+
+# Calculate RMSE for the first logistic model.
+logmod1Result <- sqrt(mean(logmod1$residuals^2))
+logmod1Result
+
+
+# Second logistic model, excluding crime rate from the additional data. 
+logmod2 <- glm(starbucks ~ income + numUni + population, data=addData)
+summary(logmod2) # display results
+
+# Calculate RMSE for the second logistic model. 
+logmod2Result <- sqrt(mean(logmod2$residuals^2))
+logmod2Result
+
+# Third logistic model (Bayesian Generalized Linear Model), excludes crime rate from additional data.
+# Also performs ten fold cross validation on data. 
+ControlParameters <-trainControl(method="repeatedcv", 
+                                 number=10,
+                                 repeats=10)
+
+logmod3 <-train(starbucks ~ income + numUni + population, 
+                   data=addData,
+                   method='bayesglm',
+                   trControl= ControlParameters
+)
+logmod3
+
+###########################################################################################################
+############################################# Seventh Method  #############################################
+###########################################################################################################
+# Support Vector Machines (SVM) Models
+# Can I use an SVM model on the new data to predict Starbucks locations?
+
+# Put data into a dataframe. 
+df4 <- as.data.frame(addData[2:5])
+
+# Create a training and testing set. 
+svm_size <- round(.8 * dim(df4)[1])
+svm_train <- df4[1:size,]
+svm_test <- df4[-(1:size),]
+
+# First SVM model with C=25, and ten fold cross validation. 
+svmMod1 = svm(df4$starbucks ~ df4$income + df4$numUni + df4$population, data = df4, cost=0.1, cross=10, scale=F, kernal='radial')
+print(svmMod1)
+
+# Results of training set. 
+svmMod1train <- predict(svmMod1, svm_train)
+svmMod1Result <- svmMod1train==svm_train$starbucks
+svmMod1Result
+
+# Results of test set.
+pred_testFinal <- predict(svmfitFinal, testing_set)
+resultFinal <- mean(pred_testFinal==testing_set$income)
+
+
+###########################################################################################################
+############################################# Eighth Method  ##############################################
+###########################################################################################################
+
+require(randomForest)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
