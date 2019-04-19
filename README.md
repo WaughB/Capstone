@@ -55,3 +55,6 @@ Welling, M. (2010). A First Encounter with Machine Learning. Retrieved January 2
 Zaki, M. J., & Meira, W. (2014). Data mining and analysis: Fundamental concepts and algorithms. Retrieved January 20, 2019.
 
 Zhao, Y. (2013). R and Data Mining: Examples and Case Studies. Retrieved January 20, 2019, from http://www.RDataMining.com 
+
+## License
+This project is [MIT licensed](LICENSE).
