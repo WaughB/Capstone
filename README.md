@@ -31,15 +31,27 @@ If more granular data was available regarding population, median income, crime r
 
 ## References
 Dietrich, D., Heller, B., & Yang, B. (2015). Data Science & Big Data Analytics: Discovering, Analyzing, Visualizing and Presenting Data. Indianapolis, IN: Wiley.
+
 Downey, A. B. (2015). Think Stats [2.0.38]. Retrieved January 20, 2019.
+
 Enchanted Learning, & U.S. Census Bureau. (2017, July 1). US States: Population and Ranking. Retrieved April 13, 2019, from https://www.enchantedlearning.com/usa/states/population.shtml
+
 James, G., Witten, D., Hastie, T., & Tibshirani, R. (2017). An introduction to Statistical Learning: With Applications in R. Retrieved January 20, 2019.
+
 Johnson, M., Jr. (2016, December 28). United States crime rates by county. Retrieved April 13, 2019, from https://www.kaggle.com/mikejohnsonjr/united-states-crime-rates-by-county
+
 Matloff, N. (2013). The Art of R programming: A tour of statistical software design. San Francisco, CA: No Starch Press.
+
 National Center for Education Statistics, & U.S. Department of Education. (2013, August 12). Colleges and Universities in the United States of America (USA) by State/ Possession. Retrieved April 13, 2019, from http://www.univsearch.com/state.php
+
 Rich, K. T. (2017). Machine learning intro in R: Support Vector Regression. Retrieved April 16, 2019, from https://rpubs.com/richkt/280840
+
 Starbucks. (2017, February 13). Starbucks Locations Worldwide. Retrieved February, 2019, from https://www.kaggle.com/starbucks/store-locations
+
 U.S. Census Bureau, & Wikipedia. (2018, December 28). List of U.S. states and territories by income. Retrieved April 13, 2019, from https://en.wikipedia.org/wiki/List_of_U.S._states_and_territories_by_income
+
 Welling, M. (2010). A First Encounter with Machine Learning. Retrieved January 20, 2019.
+
 Zaki, M. J., & Meira, W. (2014). Data mining and analysis: Fundamental concepts and algorithms. Retrieved January 20, 2019.
+
 Zhao, Y. (2013). R and Data Mining: Examples and Case Studies. Retrieved January 20, 2019, from http://www.RDataMining.com 
