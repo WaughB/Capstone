@@ -5,7 +5,6 @@
 # number of Starbuck's in an area. 
 # Data was retrieved from: https://www.kaggle.com/starbucks/store-locations
 
-
 #########################################################################################################
 ########################################### Data & Libraries ############################################
 #########################################################################################################
@@ -35,6 +34,9 @@ starbucksByState <- read_csv("Documents/IDS4934/capstone/starbucksByState.csv")
 
 # Make into a dataframe.
 df <- as.data.frame(directory)
+
+# Set seed for study.
+set.seed(950)
 
 #########################################################################################################
 ############################################# Data filtering ############################################
@@ -141,95 +143,6 @@ method2Result
 #########################################################################################################
 ############################################# Third Method  #############################################
 #########################################################################################################
-# Does removing even more upper bounds and looking inside one standard devaiation improve our chances at 
-#predicting the number of Starbucks in an area?
-
-# Data without CA, TX, WA, FL, and NY. 
-sb2 <- subset(starbucksByState, State_Province!="CA" & State_Province!="TX" & State_Province!="WA" & State_Province!="FL" & State_Province!="NY")
-sb2
-
-# Mean of data without outliers. 
-meanSB2 <- mean(sb2$count)
-meanSB2
-
-# Standard deviation of data without outliers. 
-sdSB2 <- sd(sb2$count)
-sdSB2
-
-# Upper and lower limits.
-upSB2 <- meanSB2 + sdSB2
-upSB2
-
-loSB2 <- meanSB2 - sdSB2
-loSB2
-
-# Histogram of "Number of Starbucks by State" within one standard deviation (93.05,439.39). G7.
-ggplot(sb2, aes(x=sb2$State_Province, y=sb2$count, col=sb2$State_Province, fill=sb2$State_Province)) + 
-  geom_col() +  
-  theme(axis.text.x = element_text(angle = -90), legend.position = "none") + 
-  labs(x = "State", y = "Number of Starbucks", title = "Number of Starbucks by State", caption = "based on data from: https://www.kaggle.com/starbucks/store-locations") +
-  geom_hline(yintercept = upSB2) +
-  geom_hline(yintercept = loSB2)
-
-# Boxplot for "Distribution of Starbucks in United States without CA, TX, WA, FL, and NY". G8.
-ggplot(sb2, aes(y=sb2$count)) + 
-  geom_boxplot(outlier.colour = "red", show.legend = NA, outlier.shape = 8, outlier.size = 5) +  
-  theme(legend.position = "none") + 
-  labs(y = "Number of Starbucks", title = "Distribution of Starbucks in United States without CA, TX, WA, FL, and NY", caption = "based on data from: https://www.kaggle.com/starbucks/store-locations")
-
-# Results for third method. 
-method3Result <- nrow(sb2[sb2$count<=upSB2 & sb2$count>=loSB2,])/nrow(starbucksByState)
-method3Result
-
-# #########################################################################################################
-# ############################################# XXXXXX Method  ############################################
-# #########################################################################################################
-# # Unsupervised learning.
-# # Can I use K-Means on the longitude and latitude to predict the stores in an area?
-# 
-# # Dotplot of "Starbucks locations in the United States"
-# ggplot(df3, aes(x=Longitude, y=Latitude, col=`State/Province`)) + 
-#   geom_point() +
-#   labs(x="Longitude", y = "Latitude", title = "Starbucks locations in the United States", caption = "based on data from: https://www.kaggle.com/starbucks/store-locations") +
-#   theme(legend.position = "none")
-# 
-# # Turn relevant fields into a matrix.
-# kmdata <- as.matrix(df3[, c("Longitude", "Latitude")])
-# 
-# # Find the number needed for K.
-# wss <- numeric(10)
-# for (k in 1:15) wss[k] <- sum(kmeans(kmdata, centers = k, nstart=25)$withinss)
-# 
-# # Graph to determine the proper K value.
-# plot(1:15, wss, type="b",xlab = "Number of Clusters", ylab="Within Sum of Squares")
-# 
-# # Perform kmeans with the K value from above. 
-# km =kmeans(kmdata, 3, nstart=25)
-# km
-# 
-# # Transform data back into dataframe. 
-# kDF = as.data.frame(kmdata)
-# kDF$cluster = factor(km$cluster)
-# centers = as.data.frame(km$centers)
-# 
-# # Graph of Kmeans clusters. 
-# ggplot(kDF, aes(x=kDF$Longitude, y=kDF$Latitude, color=cluster)) +
-#   geom_point() + 
-#   labs(x="Longitude", y = "Latitude", title = "KMeans Clusters of Starbucks Locations", caption = "based on data from: https://www.kaggle.com/starbucks/store-locations")
-# 
-# # Number of Starbucks locations by cluster. 
-# c1 <- nrow(kDF[kDF$cluster==1,])
-# c2 <- nrow(kDF[kDF$cluster==2,])
-# c3 <- nrow(kDF[kDF$cluster==3,])
-# 
-# # Piechart of "Kmeans Clusters of US Starbucks locations"
-# slices <- c(c1, c2, c3)
-# lbls <- c("Cluster 1", "Cluster 2","Cluster 3")
-# pie(slices, labels = lbls, main="Kmeans Clusters of US Starbucks locations", col=c("red","green","blue"))
-
-#########################################################################################################
-############################################# Fourth Method  ############################################
-#########################################################################################################
 # Linear Regression
 # Can I use linear regression on lat/long to predict Starbucks locations?
 
@@ -257,7 +170,7 @@ summary(linearMod)
 addData <- read_csv("Documents/IDS4934/capstone/addData.csv")
 
 #########################################################################################################
-############################################# Fifth Method  #############################################
+############################################# Fourth Method  ############################################
 #########################################################################################################
 # Multivariate Linear Regression
 # Can I use multivariate linear regression on the additional data to predict Starbucks locations?
@@ -266,40 +179,39 @@ addData <- read_csv("Documents/IDS4934/capstone/addData.csv")
 linFit <- lm(addData$starbucks ~ addData$income + addData$numUni + addData$population + addData$crime, data=addData)
 summary(linFit)
 
-# Create a training and testing set. 
-size <- round(.8 * dim(addData)[1])
-training_set <- addData[1:size,]
-testing_set <- addData[-(1:size),]
+# Determine the RMSE of the linear model. 
+linFitRMSE <- sqrt(mean(linFit$residuals^2))
+linFitRMSE
 
-# Training set with relevant features. 
-linFit2 <- lm(training_set$starbucks ~ training_set$income + training_set$numUni + training_set$population, data=training_set)
+# First run to see which features are relevant. 
+linFit2 <- lm(addData$starbucks ~ addData$income + addData$numUni + addData$population, data=addData)
 summary(linFit2)
 
-# Testing set. ***** FINISH THIS SECTION *******
-linFit2Test <- predict(linFit2, testing_set)
-summary(linFit2Test)
+# Determine the RMSE of the linear model. 
+linFit2RMSE <- sqrt(mean(linFit2$residuals^2))
+linFit2RMSE
 
 #########################################################################################################
-############################################# Sixth Method  #############################################
+############################################# Fifth Method  #############################################
 #########################################################################################################
 # Logistic Regression
+# Can I use logistic regression on the additional data to predict Starbucks locations?
 
 # First logistic model including all fields in additional data. 
 logmod1 <- glm(addData$starbucks ~ addData$income + addData$numUni + addData$population + addData$crime, data=addData)
 summary(logmod1) # display results
 
 # Calculate RMSE for the first logistic model.
-logmod1Result <- sqrt(mean(logmod1$residuals^2))
-logmod1Result
-
+logmod1RMSE <- sqrt(mean(logmod1$residuals^2))
+logmod1RMSE
 
 # Second logistic model, excluding crime rate from the additional data. 
 logmod2 <- glm(starbucks ~ income + numUni + population, data=addData)
-summary(logmod2) # display results
+summary(logmod2)
 
 # Calculate RMSE for the second logistic model. 
-logmod2Result <- sqrt(mean(logmod2$residuals^2))
-logmod2Result
+logmod2RMSE <- sqrt(mean(logmod2$residuals^2))
+logmod2RMSE
 
 # Third logistic model (Bayesian Generalized Linear Model), excludes crime rate from additional data.
 # Also performs ten fold cross validation on data. 
@@ -313,9 +225,10 @@ logmod3 <-train(starbucks ~ income + numUni + population,
                    trControl= ControlParameters
 )
 logmod3
+logmod3RMSE <- 201.2931
 
 ###########################################################################################################
-############################################# Seventh Method  #############################################
+############################################# Sixth Method  ###############################################
 ###########################################################################################################
 # Support Vector Machines (SVM) Models
 # Can I use an SVM model on the new data to predict Starbucks locations?
@@ -325,60 +238,72 @@ df4 <- as.data.frame(addData[2:5])
 
 # Create a training and testing set. 
 svm_size <- round(.8 * dim(df4)[1])
-svm_train <- df4[1:size,]
-svm_test <- df4[-(1:size),]
+svm_train <- df4[1:svm_size,]
+svm_test <- df4[-(1:svm_size),]
 
-# First SVM model with C=25, and ten fold cross validation. 
-svmMod1 = svm(df4$starbucks ~ df4$income + df4$numUni + df4$population, data = df4, cost=0.1, cross=10, scale=F, kernal='radial')
-print(svmMod1)
+# First SVM model with C=1, and ten fold cross validation. 
+svmMod = svm(df4$starbucks ~ df4$income + df4$numUni + df4$population, data = df4, cost=10, epsilon=1, cross=10, scale=F, kernal='radial')
+print(svmMod)
 
 # Results of training set. 
-svmMod1train <- predict(svmMod1, svm_train)
-svmMod1Result <- svmMod1train==svm_train$starbucks
-svmMod1Result
+svmModPred <- predict(svmMod, svm_train)
+errval <- df4$starbucks - svmModPred
+svm_RMSE <- RMSE(errval, obs=df4$starbucks)
+print(paste('SVM RMSE: ', svm_RMSE))
 
-# Results of test set.
-pred_testFinal <- predict(svmfitFinal, testing_set)
-resultFinal <- mean(pred_testFinal==testing_set$income)
+# Grid search for best Epsilon and Cost values. Made with help from: https://rpubs.com/richkt/280840
+tuneResult1 <- tune(svm, df4$starbucks ~ df4$income + df4$numUni + df4$population,  data = df4,
+                    ranges = list(epsilon = seq(0,1,0.01), cost = seq(0.01,5,0.05))
+)
 
+# Map tuning results
+plot(tuneResult1)
+
+# Continuation of Grid Search.
+tuneResult <- tune(svm, df4$starbucks ~ df4$income + df4$numUni + df4$population,  data = df4,
+                   ranges = list(epsilon = seq(tuneResult1$best.model$epsilon*1.01,
+                                               tuneResult1$best.model$epsilon*1.1,
+                                               length.out = 10), 
+                                 cost = seq(tuneResult1$best.model$cost-1,
+                                            tuneResult1$best.model$cost+1,
+                                            length=10)))
+
+plot(tuneResult)
+print(tuneResult)
+
+# Final SVM model with values from tuneResult.
+svmModTuned = svm(df4$starbucks ~ df4$income + df4$numUni + df4$population, data = df4, cost=tuneResult$best.parameters$cost, epsilon=tuneResult$best.parameters$epsilon, cross=10, scale=F, kernal='radial')
+print(svmModTuned)
+
+# Results of training set. 
+svmModPredTuned <- predict(svmModTuned, svm_train)
+errvalTuned <- df4$starbucks - svmModPredTuned
+svm_RMSETuned <- RMSE(errvalTuned, obs=df4$starbucks)
+print(paste('Tuned SVM RMSE: ', svm_RMSETuned))
 
 ###########################################################################################################
-############################################# Eighth Method  ##############################################
+########################################### Results from Models ###########################################
 ###########################################################################################################
 
-require(randomForest)
+# Create a dataframe for the model results. 
+resultsDF <- data.frame(model=c(linFitRMSE, 
+                                   linFit2RMSE, 
+                                   logmod1RMSE, 
+                                   logmod2RMSE, 
+                                   logmod3RMSE, 
+                                   svm_RMSE, 
+                                   svm_RMSETuned), 
+                        seq=1:7,
+                        names=c("Linear Model (all features)", 
+                                "Linear Model (without crime)", 
+                                "GLM (all features)", 
+                                "GLM (without crime)", 
+                                "Bayesian GLM (without crime)",
+                                "SVM (without crime)",
+                                "SVM (without crime, tuned)"))
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Graph of models and RMSE. 
+ggplot(resultsDF, aes(names, model, col=names)) + 
+  geom_point(size=6) +
+  labs(x="Model Number", y = "RMSE", title = "Model Performance") +
+  theme(axis.text.x = element_text(angle = -45))
